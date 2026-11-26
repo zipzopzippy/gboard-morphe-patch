@@ -31,6 +31,7 @@ public final class NetworkGuardSettingsActivity extends Activity {
     private Switch loggingSwitch;
     private EditText rulesEdit;
     private Switch gmsSwitch;
+    private Switch offlineVoiceSwitch;
     private EditText gmsEdit;
     private LinearLayout logList;
 
@@ -92,6 +93,7 @@ public final class NetworkGuardSettingsActivity extends Activity {
             rulesEdit.setText(d.rulesText);
             gmsSwitch.setChecked(d.blockGms);
             gmsEdit.setText(d.gmsRulesText);
+            offlineVoiceSwitch.setChecked(d.preferOfflineVoice);
             saveConfig();
         }));
         root.addView(header("Google Play services"));
@@ -113,6 +115,15 @@ public final class NetworkGuardSettingsActivity extends Activity {
         gmsEdit.setMinLines(2);
         gmsEdit.setHint("e.g. com.google.android.gms.phenotype.service.START");
         root.addView(gmsEdit, matchWrap());
+
+        root.addView(header("Voice typing"));
+        offlineVoiceSwitch = new Switch(this);
+        offlineVoiceSwitch.setText("Prefer offline voice typing");
+        offlineVoiceSwitch.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        root.addView(offlineVoiceSwitch, matchWrap());
+        root.addView(caption("Skip Google's online speech recognizer and use Gboard's on-device one. "
+                + "Gboard downloads the speech pack for your language from dl.google.com once, "
+                + "over Wi-Fi while charging. Needs the 'Offline voice typing' patch."));
 
         root.addView(buttons, matchWrap());
 
@@ -153,6 +164,7 @@ public final class NetworkGuardSettingsActivity extends Activity {
         rulesEdit.setText(c.rulesText);
         gmsSwitch.setChecked(c.blockGms);
         gmsEdit.setText(c.gmsRulesText);
+        offlineVoiceSwitch.setChecked(c.preferOfflineVoice);
     }
 
     private void saveConfig() {
@@ -160,7 +172,7 @@ public final class NetworkGuardSettingsActivity extends Activity {
             String rules = rulesEdit.getText().toString().replace("\r", "").trim();
             String gmsRules = gmsEdit.getText().toString().replace("\r", "").trim();
             NetworkGuard.save(this, enabledSwitch.isChecked(), loggingSwitch.isChecked(), rules,
-                    gmsSwitch.isChecked(), gmsRules);
+                    gmsSwitch.isChecked(), gmsRules, offlineVoiceSwitch.isChecked());
             Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(this, "Could not save: " + e.getMessage(), Toast.LENGTH_LONG).show();

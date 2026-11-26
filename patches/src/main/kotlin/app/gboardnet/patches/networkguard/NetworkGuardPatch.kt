@@ -36,10 +36,20 @@ internal const val HOOKS_CLASS = "Lapp/gboardnet/extension/NetworkGuardHooks;"
 
 /** Default allowlist: what Emoji Kitchen needs. Verify / extend with the in-app request log. */
 internal val DEFAULT_RULES = listOf(
-    // Emoji Kitchen sticker images.
-    "www.gstatic.com/android/keyboard/emojikitchen/",
+    // Google's static CDN: Emoji Kitchen images, dictionary / language model packs, emoji data.
+    "*.gstatic.com",
     // Emoji Kitchen combination lookup (Tenor "featured" collection API).
     "tenor.googleapis.com",
+    // Gboard Translate.
+    "translation.googleapis.com",
+    // Offline voice typing speech packs.
+    "dl.google.com/android/voice/gboard/",
+)
+
+/** Play services actions allowed by default. */
+internal val DEFAULT_GMS_RULES = listOf(
+    // ML Kit module install, needed by Scan text (text recognition runs on device).
+    "com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START",
 )
 
 @Suppress("unused")
@@ -47,7 +57,7 @@ val networkGuardPatch = patch(
     name = "Network guard",
     description = "Blocks all network requests from Gboard except for hosts in an allowlist. " +
         "Adds a 'Network access' screen to Gboard settings to edit the allowlist and view a request log. " +
-        "Emoji Kitchen is allowed by default.",
+        "Emoji Kitchen, language packs, translation and offline voice packs are allowed by default.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_GBOARD)
@@ -61,6 +71,14 @@ val networkGuardPatch = patch(
         description = "Rules allowed out of the box (editable later inside Gboard settings). " +
             "Each rule is a host ('example.com'), a wildcard host ('*.example.com'), " +
             "or a host with a path prefix ('example.com/some/path/').",
+    )
+
+    val allowedPlayServicesActions by stringsOption(
+        key = "allowedPlayServicesActions",
+        default = DEFAULT_GMS_RULES,
+        title = "Default Play services allowlist",
+        description = "Play services actions Gboard may still connect to when Play services hand-offs are blocked. " +
+            "A trailing * matches a prefix.",
     )
 
     val blockPlayServices by booleanOption(
@@ -79,7 +97,12 @@ val networkGuardPatch = patch(
     )
 
     execute {
-        injectDefaults(allowedRules ?: emptyList(), blockByDefault ?: true, blockPlayServices ?: true)
+        injectDefaults(
+            allowedRules ?: emptyList(),
+            blockByDefault ?: true,
+            blockPlayServices ?: true,
+            allowedPlayServicesActions ?: emptyList(),
+        )
         rewriteNetworkCallSites()
         addSettingsEntry()
     }
@@ -87,18 +110,22 @@ val networkGuardPatch = patch(
 
 // region Defaults
 
-private fun injectDefaults(rules: List<String>, enabled: Boolean, blockGms: Boolean) {
+private fun injectDefaults(rules: List<String>, enabled: Boolean, blockGms: Boolean, gmsRules: List<String>) {
     val guard = mutableClassDefBy(GUARD_CLASS)
-    val joined = rules.map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
     val enabledLiteral = if (enabled) 1 else 0
 
-    guard.methods.first { it.name == "patchDefaultRules" }.addInstructions(
-        0,
-        """
-            const-string v0, "${joined.toSmaliString()}"
-            return-object v0
-        """,
-    )
+    fun returnString(methodName: String, lines: List<String>) {
+        val joined = lines.map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
+        guard.methods.first { it.name == methodName }.addInstructions(
+            0,
+            """
+                const-string v0, "${joined.toSmaliString()}"
+                return-object v0
+            """,
+        )
+    }
+    returnString("patchDefaultRules", rules)
+    returnString("patchDefaultGmsRules", gmsRules)
     guard.methods.first { it.name == "patchDefaultBlockGms" }.addInstructions(
         0,
         """

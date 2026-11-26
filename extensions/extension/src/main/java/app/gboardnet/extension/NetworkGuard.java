@@ -49,6 +49,10 @@ public final class NetworkGuard {
     static final String KEY_RULES = "rules";
     static final String KEY_BLOCK_GMS = "blockGms";
     static final String KEY_GMS_RULES = "gmsRules";
+    static final String KEY_PREFER_OFFLINE_VOICE = "preferOfflineVoice";
+    /** Patch defaults the saved config already knows about, so newly added defaults can be merged in. */
+    static final String KEY_KNOWN_DEFAULT_RULES = "knownDefaultRules";
+    static final String KEY_KNOWN_DEFAULT_GMS_RULES = "knownDefaultGmsRules";
 
     static final String GMS_PACKAGE = "com.google.android.gms";
 
@@ -74,7 +78,7 @@ public final class NetworkGuard {
     // region Patch time defaults (method bodies are replaced by the patch)
 
     public static String patchDefaultRules() {
-        return "www.gstatic.com/android/keyboard/emojikitchen/\ntenor.googleapis.com";
+        return "*.gstatic.com\ntenor.googleapis.com\ntranslation.googleapis.com\ndl.google.com/android/voice/gboard/";
     }
 
     public static boolean patchDefaultEnabled() {
@@ -83,6 +87,14 @@ public final class NetworkGuard {
 
     public static boolean patchDefaultBlockGms() {
         return true;
+    }
+
+    public static boolean patchDefaultPreferOfflineVoice() {
+        return true;
+    }
+
+    public static String patchDefaultGmsRules() {
+        return "com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START";
     }
 
     // endregion
@@ -189,6 +201,19 @@ public final class NetworkGuard {
     }
 
     private static final Map<Object, Boolean> refusedConnections = new WeakHashMap<>();
+
+    /**
+     * Called by the offline voice patch with Gboard's online (S3) recognizer, before Gboard decides
+     * to use it. Returning null makes Gboard fall through to its on-device recognizers.
+     */
+    public static Object filterOnlineRecognizer(Object recognizer) {
+        try {
+            if (recognizer != null && current().preferOfflineVoice) return null;
+        } catch (Throwable t) {
+            Log.w(TAG, "filterOnlineRecognizer failed", t);
+        }
+        return recognizer;
+    }
 
     // endregion
 
@@ -299,9 +324,12 @@ public final class NetworkGuard {
         final boolean blockGms;
         final String gmsRulesText;
         final List<String> gmsRules;
+        final boolean preferOfflineVoice;
 
-        Config(boolean enabled, boolean logging, String rulesText, boolean blockGms, String gmsRulesText) {
+        Config(boolean enabled, boolean logging, String rulesText, boolean blockGms, String gmsRulesText,
+               boolean preferOfflineVoice) {
             this.enabled = enabled;
+            this.preferOfflineVoice = preferOfflineVoice;
             this.logging = logging;
             this.blockGms = blockGms;
             this.gmsRulesText = gmsRulesText == null ? "" : gmsRulesText;
@@ -352,7 +380,8 @@ public final class NetworkGuard {
     }
 
     static Config defaults() {
-        return new Config(patchDefaultEnabled(), true, patchDefaultRules(), patchDefaultBlockGms(), "");
+        return new Config(patchDefaultEnabled(), true, patchDefaultRules(), patchDefaultBlockGms(),
+                patchDefaultGmsRules(), patchDefaultPreferOfflineVoice());
     }
 
     public static void init(Context context) {
@@ -427,20 +456,54 @@ public final class NetworkGuard {
         return new Config(
                 Boolean.parseBoolean(p.getProperty(KEY_ENABLED, String.valueOf(d.enabled))),
                 Boolean.parseBoolean(p.getProperty(KEY_LOGGING, String.valueOf(d.logging))),
-                p.getProperty(KEY_RULES, d.rulesText),
+                mergeNewDefaults(p.getProperty(KEY_RULES, d.rulesText),
+                        p.getProperty(KEY_KNOWN_DEFAULT_RULES, ""), d.rulesText),
                 Boolean.parseBoolean(p.getProperty(KEY_BLOCK_GMS, String.valueOf(d.blockGms))),
-                p.getProperty(KEY_GMS_RULES, d.gmsRulesText));
+                mergeNewDefaults(p.getProperty(KEY_GMS_RULES, d.gmsRulesText),
+                        p.getProperty(KEY_KNOWN_DEFAULT_GMS_RULES, ""), d.gmsRulesText),
+                Boolean.parseBoolean(p.getProperty(KEY_PREFER_OFFLINE_VOICE,
+                        String.valueOf(d.preferOfflineVoice))));
+    }
+
+    /**
+     * Appends patch default lines that the saved list has never seen (added by a newer patch
+     * version). Defaults the user already saw and removed stay removed.
+     */
+    static String mergeNewDefaults(String saved, String knownDefaults, String currentDefaults) {
+        java.util.Set<String> savedLines = lineSet(saved);
+        java.util.Set<String> known = lineSet(knownDefaults);
+        StringBuilder out = new StringBuilder(saved == null ? "" : saved.trim());
+        for (String line : currentDefaults.split("\n")) {
+            String l = line.trim();
+            if (l.isEmpty() || known.contains(l) || savedLines.contains(l)) continue;
+            if (out.length() > 0) out.append('\n');
+            out.append(l);
+        }
+        return out.toString();
+    }
+
+    private static java.util.Set<String> lineSet(String text) {
+        java.util.Set<String> set = new java.util.HashSet<>();
+        if (text == null) return set;
+        for (String line : text.split("\n")) {
+            String l = line.trim();
+            if (!l.isEmpty()) set.add(l);
+        }
+        return set;
     }
 
     /** Called by the settings screen. */
     static void save(Context context, boolean enabled, boolean logging, String rules,
-                     boolean blockGms, String gmsRules) throws IOException {
+                     boolean blockGms, String gmsRules, boolean preferOfflineVoice) throws IOException {
         Properties p = new Properties();
         p.setProperty(KEY_ENABLED, String.valueOf(enabled));
         p.setProperty(KEY_LOGGING, String.valueOf(logging));
         p.setProperty(KEY_RULES, rules);
         p.setProperty(KEY_BLOCK_GMS, String.valueOf(blockGms));
         p.setProperty(KEY_GMS_RULES, gmsRules);
+        p.setProperty(KEY_PREFER_OFFLINE_VOICE, String.valueOf(preferOfflineVoice));
+        p.setProperty(KEY_KNOWN_DEFAULT_RULES, patchDefaultRules());
+        p.setProperty(KEY_KNOWN_DEFAULT_GMS_RULES, patchDefaultGmsRules());
         File dir = storageDir(context);
         File tmp = new File(dir, CONFIG_FILE + ".tmp");
         OutputStream out = new FileOutputStream(tmp);

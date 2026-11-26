@@ -35,6 +35,12 @@ time, rather than doing nothing, if it finds no URL or Cronet call sites.
   text to type it. Gboard ships it switched off (`enable_ocr` flag) and Google normally enables it
   remotely, which the network guard prevents. Supported languages default to English.
 
+- **Offline voice typing** (on by default): lets Gboard's built-in on-device speech recognizer handle every
+  language it has a speech pack for (Gboard only allows English (US) by default, though packs exist for en-AU,
+  en-GB, en-CA, de-DE, fr-FR and more), and skips Google's online recognizer while "Prefer offline voice typing"
+  is on (Gboard settings > Network access). The speech pack for your keyboard language downloads once from
+  `dl.google.com` while on Wi-Fi and charging.
+
 ## Allowlist rules
 
 | Rule | Allows |
@@ -47,9 +53,18 @@ time, rather than doing nothing, if it finds no URL or Cronet call sites.
 Defaults (patch option `allowedRules`):
 
 ```
-www.gstatic.com/android/keyboard/emojikitchen/
-tenor.googleapis.com
+*.gstatic.com                          # Google's static CDN: Emoji Kitchen, language/dictionary packs, emoji data
+tenor.googleapis.com                   # Emoji Kitchen combinations
+translation.googleapis.com             # Translate
+dl.google.com/android/voice/gboard/    # offline voice typing speech packs
 ```
+
+Default Play services allowlist (patch option `allowedPlayServicesActions`):
+`com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START`, which Scan text needs to load
+its on-device text recognition module.
+
+Defaults added by a newer patch version are merged into an existing saved allowlist automatically;
+defaults you removed yourself stay removed.
 
 These are the image CDN path and the Tenor API that Emoji Kitchen is known to use. If Emoji Kitchen
 doesn't load:
