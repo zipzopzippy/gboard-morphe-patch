@@ -121,9 +121,10 @@ public final class NetworkGuardSettingsActivity extends Activity {
         offlineVoiceSwitch.setText("Prefer offline voice typing");
         offlineVoiceSwitch.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         root.addView(offlineVoiceSwitch, matchWrap());
-        root.addView(caption("Skip Google's online speech recognizer and use Gboard's on-device one. "
-                + "Gboard downloads the speech pack for your language from dl.google.com once, "
-                + "over Wi-Fi while charging. Needs the 'Offline voice typing' patch."));
+        root.addView(caption("For English voice typing, skip Google's online speech recognizer and use "
+                + "Gboard's on-device one (works for every English variant). Gboard downloads the speech pack "
+                + "from dl.google.com once, over Wi-Fi. Other languages keep Gboard's normal online voice typing. "
+                + "Needs the 'Offline voice typing' patch."));
 
         root.addView(buttons, matchWrap());
 

@@ -35,12 +35,13 @@ time, rather than doing nothing, if it finds no URL or Cronet call sites.
   text to type it. Gboard ships it switched off (`enable_ocr` flag) and Google normally enables it
   remotely, which the network guard prevents. Supported languages default to English.
 
-- **Offline voice typing** (on by default): lets Gboard's built-in on-device speech recognizer handle every
-  language it has a speech pack for (Gboard only allows English (US) by default, though packs exist for en-AU,
-  en-GB, en-CA, de-DE, fr-FR and more), and skips Google's online recognizer while "Prefer offline voice typing"
-  is on (Gboard settings > Network access). Gboard's on-device engine only accepts its English (US) speech pack, so the patch always uses that pack (it
-  works fine for other English accents). The patch also makes Gboard always download that pack (once, from `dl.google.com`) as soon as it is on
-  Wi-Fi, without waiting for charging and without needing English (US) enabled as a keyboard language.
+- **Offline voice typing** (on by default, English only): lets Gboard's built-in on-device speech recognizer handle
+  every English variant (Gboard only allows English (US); en-AU, en-GB, en-IN, ... now work too) and, for English
+  voice sessions, skips Google's online recognizer while "Prefer offline voice typing" is on (Gboard settings >
+  Network access). Gboard's on-device engine only accepts its English (US) speech pack, so the patch always uses
+  that pack and makes Gboard download it (once, from `dl.google.com`) as soon as the phone is on Wi-Fi, without
+  waiting for charging or needing English (US) enabled. Other languages keep Gboard's normal (online) voice typing,
+  which the network guard blocks unless you allow Google's speech servers.
 
 ## Allowlist rules
 

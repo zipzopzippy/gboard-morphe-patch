@@ -207,13 +207,49 @@ public final class NetworkGuard {
      * Called by the offline voice patch with Gboard's online (S3) recognizer, before Gboard decides
      * to use it. Returning null makes Gboard fall through to its on-device recognizers.
      */
-    public static Object filterOnlineRecognizer(Object recognizer) {
+    public static Object filterOnlineRecognizer(Object recognizer, Object sessionParams) {
         try {
-            if (recognizer != null && current().preferOfflineVoice) return null;
+            // Only English sessions: Gboard's on-device model is English, other languages keep
+            // the stock (online) behaviour.
+            if (recognizer != null && current().preferOfflineVoice && isEnglishSession(sessionParams)) {
+                return null;
+            }
         } catch (Throwable t) {
             Log.w(TAG, "filterOnlineRecognizer failed", t);
         }
         return recognizer;
+    }
+
+    /**
+     * Replaces Gboard's "language equals en-US" check in the offline recognizer: any variant of the
+     * same language (en-AU, en-GB, ...) counts. Gboard's language objects print as tags like "en-AU".
+     */
+    public static boolean sameLanguageFamily(Object language, Object other) {
+        String a = languagePrefix(language == null ? null : language.toString());
+        return a != null && a.equals(languagePrefix(other == null ? null : other.toString()));
+    }
+
+    /** Session params print like "oaa[audioInputStream=null, primaryLanguageTag=en-AU, ...]". */
+    static boolean isEnglishSession(Object sessionParams) {
+        if (sessionParams == null) return false;
+        String s = sessionParams.toString();
+        int i = s.indexOf("primaryLanguageTag=");
+        if (i < 0) return false;
+        int start = i + "primaryLanguageTag=".length();
+        int end = start;
+        while (end < s.length() && s.charAt(end) != ',' && s.charAt(end) != ']' && s.charAt(end) != ' ') end++;
+        return "en".equals(languagePrefix(s.substring(start, end)));
+    }
+
+    static String languagePrefix(String tag) {
+        if (tag == null) return null;
+        String t = tag.trim().toLowerCase(Locale.ROOT);
+        int cut = t.length();
+        int dash = t.indexOf('-');
+        int underscore = t.indexOf('_');
+        if (dash >= 0) cut = Math.min(cut, dash);
+        if (underscore >= 0) cut = Math.min(cut, underscore);
+        return cut == 0 ? null : t.substring(0, cut);
     }
 
     /** Used by the offline voice patch: make sure the speech pack list always includes [extra]. */

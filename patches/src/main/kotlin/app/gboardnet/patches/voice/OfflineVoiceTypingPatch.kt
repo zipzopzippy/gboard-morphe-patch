@@ -4,6 +4,10 @@ import app.gboardnet.patches.shared.Constants.COMPATIBILITY_GBOARD
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction21c
+import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction35c
+import com.android.tools.smali.dexlib2.iface.instruction.formats.Instruction35c
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import app.morphe.patcher.patch.PatchException
@@ -78,19 +82,29 @@ val offlineVoiceTypingPatch = patch(
             field.takeIf { it.definingClass == it.type && !it.type.startsWith("Ljava/") }
         } ?: throw PatchException("Could not find Gboard's en-US language constant")
 
-        var forced = 0
-        fallback.instructionsList().withIndex().reversed().forEach { (index, instruction) ->
+        // Replace "language.equals(en-US)" with "same language family", so every English variant
+        // (en-AU, en-GB, en-IN, ...) passes while other languages keep Gboard's stock behaviour.
+        var relaxed = 0
+        fallback.instructionsList().withIndex().toList().forEach { (index, instruction) ->
             if (instruction.opcode != Opcode.INVOKE_VIRTUAL) return@forEach
             val ref = (instruction as ReferenceInstruction).reference as MethodReference
-            if (ref.name != "equals" || ref.returnType != "Z" || ref.definingClass.startsWith("Ljava/")) return@forEach
-            val next = fallback.instructionsList().getOrNull(index + 1) ?: return@forEach
-            if (next.opcode != Opcode.MOVE_RESULT) return@forEach
-            val register = (next as OneRegisterInstruction).registerA
-            fallback.addInstructions(index + 2, if (register < 16) "const/4 v$register, 0x1" else "const/16 v$register, 0x1")
-            forced++
+            if (ref.name != "equals" || ref.returnType != "Z" || ref.definingClass != enUs.type) return@forEach
+            val call = instruction as Instruction35c
+            if (call.registerCount != 2) return@forEach
+            fallback.replaceInstruction(
+                index,
+                BuilderInstruction35c(
+                    Opcode.INVOKE_STATIC, 2, call.registerC, call.registerD, 0, 0, 0,
+                    ImmutableMethodReference(
+                        GUARD_CLASS, "sameLanguageFamily",
+                        listOf("Ljava/lang/Object;", "Ljava/lang/Object;"), "Z",
+                    ),
+                ),
+            )
+            relaxed++
         }
-        if (forced == 0) throw PatchException("Unexpected shape of the fallback on-device language check")
-        logger.info("Offline voice typing: removed en-US only restriction ($forced checks)")
+        if (relaxed == 0) throw PatchException("Unexpected shape of the fallback on-device language check")
+        logger.info("Offline voice typing: fallback recognizer accepts all English variants ($relaxed checks)")
 
         // 1b. The fallback recognizer only works with the en-US speech pack (other languages' packs
         //     are rejected by the speech engine as INVALID_LANGUAGE_PACK), so always load that one.
@@ -160,10 +174,16 @@ val offlineVoiceTypingPatch = patch(
         } ?: throw PatchException("Could not find the online recognizer call")
         val returnType = ((instructions[callIndex] as ReferenceInstruction).reference as MethodReference).returnType
         val register = (instructions[callIndex + 1] as OneRegisterInstruction).registerA
+        // The session params are the selector's first parameter (p1, or p0 if static).
+        val isStatic = selector.accessFlags and AccessFlags.STATIC.value != 0
+        val paramsRegister = if (isStatic) "p0" else "p1"
+        if (selector.parameterTypes.firstOrNull()?.toString()?.startsWith("L") != true) {
+            throw PatchException("Unexpected speech recognizer selection signature")
+        }
         selector.addInstructions(
             callIndex + 2,
             """
-                invoke-static/range { v$register .. v$register }, $GUARD_CLASS->filterOnlineRecognizer(Ljava/lang/Object;)Ljava/lang/Object;
+                invoke-static { v$register, $paramsRegister }, $GUARD_CLASS->filterOnlineRecognizer(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
                 move-result-object v$register
                 check-cast v$register, $returnType
             """,
