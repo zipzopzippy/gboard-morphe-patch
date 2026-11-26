@@ -1,3 +1,13 @@
+## [1.3.0](https://github.com/zipzopzippy/gboard-morphe-patch/compare/v1.2.0...v1.3.0) (2026-11-26)
+
+### ✨ New Features
+
+* Download the offline speech pack right away without needing English (US) enabled ([775c80e](https://github.com/zipzopzippy/gboard-morphe-patch/commit/775c80ef18cb358ffeca1a6533d8b334af2b518c))
+
+### 🐛 Bug Fixes
+
+* Make offline voice typing work for non-US English keyboards and Scan text with Play services blocked ([f285619](https://github.com/zipzopzippy/gboard-morphe-patch/commit/f28561939a54d8aa28e538f07b271f3177682b42))
+
 ## [1.2.0](https://github.com/zipzopzippy/gboard-morphe-patch/compare/v1.1.0...v1.2.0) (2026-11-26)
 
 ### ✨ New Features
