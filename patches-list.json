@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "patches": [
     {
       "name": "Enable Scan text",
@@ -41,7 +41,7 @@
     },
     {
       "name": "Network guard",
-      "description": "Blocks all network requests from Gboard except for hosts in an allowlist. Adds a 'Network access' screen to Gboard settings to edit the allowlist and view a request log. Emoji Kitchen is allowed by default.",
+      "description": "Blocks all network requests from Gboard except for hosts in an allowlist. Adds a 'Network access' screen to Gboard settings to edit the allowlist and view a request log. Emoji Kitchen, language packs, translation and offline voice packs are allowed by default.",
       "default": true,
       "category": null,
       "compatiblePackages": [
@@ -82,8 +82,21 @@
           "required": false,
           "type": "kotlin.collections.List<kotlin.String>",
           "default": [
-            "www.gstatic.com/android/keyboard/emojikitchen/",
-            "tenor.googleapis.com"
+            "*.gstatic.com",
+            "tenor.googleapis.com",
+            "translation.googleapis.com",
+            "dl.google.com/android/voice/gboard/"
+          ],
+          "values": null
+        },
+        {
+          "key": "allowedPlayServicesActions",
+          "title": "Default Play services allowlist",
+          "description": "Play services actions Gboard may still connect to when Play services hand-offs are blocked. A trailing * matches a prefix.",
+          "required": false,
+          "type": "kotlin.collections.List<kotlin.String>",
+          "default": [
+            "com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START"
           ],
           "values": null
         },
@@ -100,6 +113,53 @@
           "key": "blockByDefault",
           "title": "Enable blocking by default",
           "description": "If disabled, the guard starts switched off until enabled in Gboard settings.",
+          "required": false,
+          "type": "kotlin.Boolean",
+          "default": true,
+          "values": null
+        }
+      ]
+    },
+    {
+      "name": "Offline voice typing",
+      "description": "Lets Gboard's on-device speech recognizer work for all languages it has speech packs for (not just English (US)), and prefers it over Google's online recognizer. Can be switched in Gboard settings > Network access.",
+      "default": true,
+      "category": null,
+      "compatiblePackages": [
+        {
+          "packageName": "com.google.android.inputmethod.latin",
+          "name": "Gboard",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#1A73E8",
+          "signatures": [
+            "f0fd6c5b410f25cb25c3b53346c8972fae30f8ee7411df910480ad6b2d60db83",
+            "7ce83c1b71f3d572fed04c8d40c5cb10ff75e6d87d9df6fbd53f0468c2905053"
+          ],
+          "formFactor": "MOBILE",
+          "targets": [
+            {
+              "version": "18.6.10.1002251336-release-arm64-v8a",
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": [
+        {
+          "key": "preferOfflineVoice",
+          "title": "Prefer offline voice typing",
+          "description": "Skip Google's online speech recognizer by default (changeable later in Gboard settings).",
           "required": false,
           "type": "kotlin.Boolean",
           "default": true,

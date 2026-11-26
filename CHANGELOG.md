@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/zipzopzippy/gboard-morphe-patch/compare/v1.1.0...v1.2.0) (2026-11-26)
+
+### ✨ New Features
+
+* Add Offline voice typing patch and broaden default allowlists ([87167a0](https://github.com/zipzopzippy/gboard-morphe-patch/commit/87167a097112bc0a69324a1591c414bb31dddda7))
+
 ## [1.1.0](https://github.com/zipzopzippy/gboard-morphe-patch/compare/v1.0.0...v1.1.0) (2026-11-26)
 
 ### ✨ New Features
