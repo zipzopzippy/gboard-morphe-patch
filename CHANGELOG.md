@@ -1,3 +1,9 @@
+## [1.3.1](https://github.com/zipzopzippy/gboard-morphe-patch/compare/v1.3.0...v1.3.1) (2026-11-26)
+
+### 🐛 Bug Fixes
+
+* Limit offline voice typing to English so other languages keep stock voice typing ([9e5562d](https://github.com/zipzopzippy/gboard-morphe-patch/commit/9e5562d445aa216cc6b188a7de664132b5b72402))
+
 ## [1.3.0](https://github.com/zipzopzippy/gboard-morphe-patch/compare/v1.2.0...v1.3.0) (2026-11-26)
 
 ### ✨ New Features
