@@ -1,0 +1,8 @@
+{
+  "created_at": "2026-11-26T02:39:24",
+  "description": "## 1.0.0 (2026-11-26)\n\n### ✨ New Features\n\n* Add Network Guard patch that blocks Gboard network access except an allowlist ([19354be](https://github.com/zipzopzippy/gboard-morphe-patch/commit/19354be77cae5e71cf1505bd4a6f7e594eeec269))",
+  "download_url": "https://github.com/zipzopzippy/gboard-morphe-patch/releases/download/v1.0.0/patches-1.0.0.mpp",
+  "signature_download_url": "",
+  "version": "1.0.0",
+  "public_key": "xmlEmzYIVxZMaGqbne5Uku67IgBkRHvXO68X2OvsnKQ="
+}
