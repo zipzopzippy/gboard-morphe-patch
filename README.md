@@ -31,6 +31,10 @@ The patch only hooks framework and Cronet APIs, whose names survive obfuscation,
 methods. So it should work on most Gboard versions without per-version fingerprints. It fails at patch
 time, rather than doing nothing, if it finds no URL or Cronet call sites.
 
+- **Enable Scan text** (on by default): turns on Gboard's Scan text tool, which lets you photograph
+  text to type it. Gboard ships it switched off (`enable_ocr` flag) and Google normally enables it
+  remotely, which the network guard prevents. Supported languages default to English.
+
 ## Allowlist rules
 
 | Rule | Allows |
