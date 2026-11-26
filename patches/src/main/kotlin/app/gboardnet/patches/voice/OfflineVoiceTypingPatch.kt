@@ -29,6 +29,9 @@ private const val FALLBACK_LANGUAGE_LOG =
 /** Logged by FallbackOnDeviceRecognitionProvider's recognizer factory when no pack exists. */
 private const val FALLBACK_FACTORY_LOG = "newRecognizer() : No speech pack."
 
+/** Logged by SpeechPackSlicingStrategy.getSlices(), which builds the speech pack download request. */
+private const val SLICING_LOG = "getSlices() : ForceUpdates = %b : LanguageTags = %s"
+
 /** Logged by SpeechRecognitionFactory.getSpeechRecognizer() right before it creates the S3 recognizer. */
 private const val ONLINE_FIRST_LOG =
     "[RD] Prioritizing the new S3 recognizer over the on-device recognizer. [news3]"
@@ -101,6 +104,46 @@ val offlineVoiceTypingPatch = patch(
         val target = (factory.instructionsList()[languageRead] as TwoRegisterInstruction).registerA
         factory.replaceInstruction(languageRead, BuilderInstruction21c(Opcode.SGET_OBJECT, target, enUs))
         logger.info("Offline voice typing: fallback recognizer always uses the en-US speech pack")
+
+        // 1c. Speech pack download: always include the en-US pack, don't wait for charging, and
+        //     download in the foreground instead of as a delayed background job. Wi-Fi only stays.
+        val slicing = methodsUsingString(SLICING_LOG).singleOrNull()
+            ?: throw PatchException("Could not find the speech pack download request")
+        fun optionResult(name: String): Pair<Int, Int> {
+            val list = slicing.instructionsList()
+            val keyIndex = list.indexOfFirst { it.isConstString(name) }
+            if (keyIndex < 0) throw PatchException("Speech pack option '$name' not found")
+            val moveIndex = (keyIndex + 1 until minOf(keyIndex + 4, list.size)).firstOrNull {
+                list[it].opcode == Opcode.MOVE_RESULT || list[it].opcode == Opcode.MOVE_RESULT_OBJECT
+            } ?: throw PatchException("Unexpected shape around speech pack option '$name'")
+            return moveIndex to (list[moveIndex] as OneRegisterInstruction).registerA
+        }
+        fun setBoolean(name: String, value: Boolean) {
+            val (moveIndex, register) = optionResult(name)
+            slicing.addInstructions(moveIndex + 1, "const/4 v$register, ${if (value) "0x1" else "0x0"}")
+        }
+        // Bottom-up so earlier indices stay valid.
+        setBoolean("CHARGING_ONLY", false)
+        setBoolean("FOREGROUND", true)
+        run {
+            val (moveIndex, listRegister) = optionResult("LANGUAGE_TAGS")
+            val list = slicing.instructionsList()
+            // A scratch register: the next move-result after the tag list overwrites it anyway.
+            val scratch = (moveIndex + 1 until list.size).firstOrNull {
+                list[it].opcode == Opcode.MOVE_RESULT
+            }?.let { (list[it] as OneRegisterInstruction).registerA }
+                ?: throw PatchException("No scratch register in the speech pack download request")
+            if (listRegister > 15 || scratch > 15) throw PatchException("Unexpected registers in speech pack request")
+            slicing.addInstructions(
+                moveIndex + 1,
+                """
+                    sget-object v$scratch, ${enUs.definingClass}->${enUs.name}:${enUs.type}
+                    invoke-static { v$listRegister, v$scratch }, $GUARD_CLASS->withExtraLanguage(Ljava/util/List;Ljava/lang/Object;)Ljava/util/List;
+                    move-result-object v$listRegister
+                """,
+            )
+        }
+        logger.info("Offline voice typing: en-US speech pack always downloaded, without waiting for charging")
 
         // 2. Recognizer selection: pass the online recognizer through the guard, which returns null
         //    when offline is preferred, so Gboard continues with its on-device recognizers.

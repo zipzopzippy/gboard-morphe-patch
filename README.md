@@ -39,8 +39,8 @@ time, rather than doing nothing, if it finds no URL or Cronet call sites.
   language it has a speech pack for (Gboard only allows English (US) by default, though packs exist for en-AU,
   en-GB, en-CA, de-DE, fr-FR and more), and skips Google's online recognizer while "Prefer offline voice typing"
   is on (Gboard settings > Network access). Gboard's on-device engine only accepts its English (US) speech pack, so the patch always uses that pack (it
-  works fine for other English accents). Keep **English (US)** enabled as a keyboard language so Gboard downloads
-  that pack (once, from `dl.google.com`, on Wi-Fi while charging).
+  works fine for other English accents). The patch also makes Gboard always download that pack (once, from `dl.google.com`) as soon as it is on
+  Wi-Fi, without waiting for charging and without needing English (US) enabled as a keyboard language.
 
 ## Allowlist rules
 

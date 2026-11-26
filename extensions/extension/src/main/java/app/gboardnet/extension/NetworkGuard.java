@@ -216,6 +216,16 @@ public final class NetworkGuard {
         return recognizer;
     }
 
+    /** Used by the offline voice patch: make sure the speech pack list always includes [extra]. */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static List withExtraLanguage(List tags, Object extra) {
+        if (extra == null) return tags;
+        if (tags != null && tags.contains(extra)) return tags;
+        List result = tags == null ? new ArrayList() : new ArrayList(tags);
+        result.add(extra);
+        return result;
+    }
+
     // endregion
 
     // region Decisions
