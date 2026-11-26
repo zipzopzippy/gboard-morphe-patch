@@ -94,7 +94,8 @@ public final class NetworkGuard {
     }
 
     public static String patchDefaultGmsRules() {
-        return "com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START";
+        return "com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START\n"
+                + "com.google.android.chimera.BoundService.START";
     }
 
     // endregion

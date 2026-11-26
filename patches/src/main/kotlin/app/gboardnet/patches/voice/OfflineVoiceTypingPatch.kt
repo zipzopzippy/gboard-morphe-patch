@@ -2,6 +2,10 @@ package app.gboardnet.patches.voice
 
 import app.gboardnet.patches.shared.Constants.COMPATIBILITY_GBOARD
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction21c
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.booleanOption
 import app.morphe.patcher.patch.classDefByStrings
@@ -21,6 +25,9 @@ private const val GUARD_CLASS = "Lapp/gboardnet/extension/NetworkGuard;"
 /** Logged by FallbackOnDeviceRecognitionProvider.canHandle() when the language is not en-US. */
 private const val FALLBACK_LANGUAGE_LOG =
     "canHandle() : Only en-us is supported for fallback on-device recognition."
+
+/** Logged by FallbackOnDeviceRecognitionProvider's recognizer factory when no pack exists. */
+private const val FALLBACK_FACTORY_LOG = "newRecognizer() : No speech pack."
 
 /** Logged by SpeechRecognitionFactory.getSpeechRecognizer() right before it creates the S3 recognizer. */
 private const val ONLINE_FIRST_LOG =
@@ -61,6 +68,13 @@ val offlineVoiceTypingPatch = patch(
         //    speech pack of the current language (packs exist for en-AU, en-GB, de-DE, ...).
         val fallback = methodsUsingString(FALLBACK_LANGUAGE_LOG).singleOrNull()
             ?: throw PatchException("Could not find the fallback on-device language check")
+        // The en-US language constant the check compares against (sget-object before equals()).
+        val enUs = fallback.instructionsList().firstNotNullOfOrNull { ins ->
+            if (ins.opcode != Opcode.SGET_OBJECT) return@firstNotNullOfOrNull null
+            val field = (ins as ReferenceInstruction).reference as FieldReference
+            field.takeIf { it.definingClass == it.type && !it.type.startsWith("Ljava/") }
+        } ?: throw PatchException("Could not find Gboard's en-US language constant")
+
         var forced = 0
         fallback.instructionsList().withIndex().reversed().forEach { (index, instruction) ->
             if (instruction.opcode != Opcode.INVOKE_VIRTUAL) return@forEach
@@ -75,11 +89,24 @@ val offlineVoiceTypingPatch = patch(
         if (forced == 0) throw PatchException("Unexpected shape of the fallback on-device language check")
         logger.info("Offline voice typing: removed en-US only restriction ($forced checks)")
 
+        // 1b. The fallback recognizer only works with the en-US speech pack (other languages' packs
+        //     are rejected by the speech engine as INVALID_LANGUAGE_PACK), so always load that one.
+        val factory = methodsUsingString(FALLBACK_FACTORY_LOG).singleOrNull()
+            ?: throw PatchException("Could not find the fallback recognizer factory")
+        val languageRead = factory.instructionsList().indexOfFirst { ins ->
+            ins.opcode == Opcode.IGET_OBJECT &&
+                ((ins as ReferenceInstruction).reference as FieldReference).type == enUs.type
+        }
+        if (languageRead < 0) throw PatchException("Could not find the fallback recognizer's language lookup")
+        val target = (factory.instructionsList()[languageRead] as TwoRegisterInstruction).registerA
+        factory.replaceInstruction(languageRead, BuilderInstruction21c(Opcode.SGET_OBJECT, target, enUs))
+        logger.info("Offline voice typing: fallback recognizer always uses the en-US speech pack")
+
         // 2. Recognizer selection: pass the online recognizer through the guard, which returns null
         //    when offline is preferred, so Gboard continues with its on-device recognizers.
-        val factory = methodsUsingString(ONLINE_FIRST_LOG).singleOrNull()
+        val selector = methodsUsingString(ONLINE_FIRST_LOG).singleOrNull()
             ?: throw PatchException("Could not find Gboard's speech recognizer selection")
-        val instructions = factory.instructionsList()
+        val instructions = selector.instructionsList()
         val logIndex = instructions.indexOfFirst { it.isConstString(ONLINE_FIRST_LOG) }
         val callIndex = (logIndex + 1 until instructions.size).firstOrNull { i ->
             val ins = instructions[i]
@@ -90,7 +117,7 @@ val offlineVoiceTypingPatch = patch(
         } ?: throw PatchException("Could not find the online recognizer call")
         val returnType = ((instructions[callIndex] as ReferenceInstruction).reference as MethodReference).returnType
         val register = (instructions[callIndex + 1] as OneRegisterInstruction).registerA
-        factory.addInstructions(
+        selector.addInstructions(
             callIndex + 2,
             """
                 invoke-static/range { v$register .. v$register }, $GUARD_CLASS->filterOnlineRecognizer(Ljava/lang/Object;)Ljava/lang/Object;

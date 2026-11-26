@@ -38,8 +38,9 @@ time, rather than doing nothing, if it finds no URL or Cronet call sites.
 - **Offline voice typing** (on by default): lets Gboard's built-in on-device speech recognizer handle every
   language it has a speech pack for (Gboard only allows English (US) by default, though packs exist for en-AU,
   en-GB, en-CA, de-DE, fr-FR and more), and skips Google's online recognizer while "Prefer offline voice typing"
-  is on (Gboard settings > Network access). The speech pack for your keyboard language downloads once from
-  `dl.google.com` while on Wi-Fi and charging.
+  is on (Gboard settings > Network access). Gboard's on-device engine only accepts its English (US) speech pack, so the patch always uses that pack (it
+  works fine for other English accents). Keep **English (US)** enabled as a keyboard language so Gboard downloads
+  that pack (once, from `dl.google.com`, on Wi-Fi while charging).
 
 ## Allowlist rules
 
@@ -60,8 +61,9 @@ dl.google.com/android/voice/gboard/    # offline voice typing speech packs
 ```
 
 Default Play services allowlist (patch option `allowedPlayServicesActions`):
-`com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START`, which Scan text needs to load
-its on-device text recognition module.
+`com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START` and
+`com.google.android.chimera.BoundService.START`, which Scan text needs to load its on-device text recognition module.
+Play services logging (`clearcut`) and remote flags (`phenotype`) stay blocked.
 
 Defaults added by a newer patch version are merged into an existing saved allowlist automatically;
 defaults you removed yourself stay removed.

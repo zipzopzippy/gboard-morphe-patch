@@ -50,6 +50,9 @@ internal val DEFAULT_RULES = listOf(
 internal val DEFAULT_GMS_RULES = listOf(
     // ML Kit module install, needed by Scan text (text recognition runs on device).
     "com.google.android.gms.chimera.container.moduleinstall.ModuleInstallService.START",
+    // Play services' generic service broker; Scan text's availability check goes through it.
+    // Logging (clearcut) and remote flags (phenotype) use their own actions and stay blocked.
+    "com.google.android.chimera.BoundService.START",
 )
 
 @Suppress("unused")
