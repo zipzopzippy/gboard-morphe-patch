@@ -1,3 +1,9 @@
+## [1.4.0](https://github.com/zipzopzippy/gboard-morphe-patch/compare/v1.3.1...v1.4.0) (2026-11-26)
+
+### ✨ New Features
+
+* Replace Enable Scan text with a generic Enable feature flags patch ([f238cd2](https://github.com/zipzopzippy/gboard-morphe-patch/commit/f238cd2d6a7e166cdbf8aec58125dbd43f0728c5))
+
 ## [1.3.1](https://github.com/zipzopzippy/gboard-morphe-patch/compare/v1.3.0...v1.3.1) (2026-11-26)
 
 ### 🐛 Bug Fixes
