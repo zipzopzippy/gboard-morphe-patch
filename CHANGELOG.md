@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/zipzopzippy/gboard-morphe-patch/compare/v1.0.0...v1.1.0) (2026-11-26)
+
+### ✨ New Features
+
+* Add Enable Scan text patch ([5730179](https://github.com/zipzopzippy/gboard-morphe-patch/commit/5730179f092ec4e0232cba741c6667a8a5739c16))
+
 ## 1.0.0 (2026-11-26)
 
 ### ✨ New Features
