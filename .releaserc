@@ -1,10 +1,6 @@
 {
   "branches": [
-    "main",
-    {
-      "name": "dev",
-      "prerelease": true
-    }
+    "main"
   ],
   "plugins": [
     [
@@ -83,13 +79,6 @@
           && git commit -m \"chore: Publish v${nextRelease.version} in patches-bundle.json [skip ci]\" \
           && git pull --rebase --autostash origin ${branch.name} \
           && git push origin HEAD:${branch.name}"
-      }
-    ],
-    [
-      "@cleyrop-org/semantic-release-backmerge",
-      {
-        "backmergeBranches": [{"from": "main", "to": "dev"}],
-        "clearWorkspace": true
       }
     ]
   ]
